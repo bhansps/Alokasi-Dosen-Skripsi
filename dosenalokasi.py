@@ -1,9 +1,15 @@
 import random
 import collections
 
+random.seed(100)
 kuotaDosen=[5,5,6,6,3,5]
-jmlpopulasi=10
+jmlpopulasi=100
 target=[5,0,3,4,2,4,5,1,5,0,0,4,5,4,2,3,3,4,1,1,0,4,1,2,3,5,0,1,3,2]
+fitnessTarget = len(target)
+t = collections.Counter(target)
+for i in t.keys():
+    if(kuotaDosen[i] < t[i]):
+        fitnessTarget -= t[i] - kuotaDosen[i]
 
 def populasi(jml,pnjngtarget,kuota):
     populasi=[['' for x in range(pnjngtarget)] for y in range(jml)]
@@ -67,7 +73,13 @@ def selectionparents(fit, populasi, matingpool):
     return parent
 
 # crossover semua parent
-def crossover(populasi, crossoverPoint):
+def crossover(populasi, totalPoint):
+    step = len(target) // totalPoint
+    crossoverPoint = []
+    t = 0
+    for _ in range(totalPoint):
+        t = random.randint(t, t+step)
+        crossoverPoint.append(t)
     # crossoverPoint : array yg isinya point crossover
     # misal 2, 4, 5, 9
     #        v     v  v           v            v     v  v           v 
@@ -102,11 +114,14 @@ def mutation(populasi):
                 selisih = len(genPos[i]) - kuotaDosen[i]
                 # diubah sebanyak lebihnya
                 for _ in range(selisih):
-                    random.shuffle(genPos[i])
-                    inx = genPos[i].pop() # index random yang diubah
                     val = getRandomIndex(genPos) # dosen yang kuotanya kurang
-                    individu[inx] = val # diubah
-                    genPos[val].append(inx) # update posisi gen
+                    if(val == None):
+                        break
+                    else:
+                        random.shuffle(genPos[i])
+                        inx = genPos[i].pop() # index random yang diubah
+                        individu[inx] = val # diubah
+                        genPos[val].append(inx) # update posisi gen
     return populasi
 
 def getGenPotision(individu):
@@ -123,8 +138,11 @@ def getRandomIndex(genPos): # mendapatkan dosen yang kuotanya kurang
     for i in range(len(kuotaDosen)):
         if(len(genPos[i]) < kuotaDosen[i]):
             arr.append(i)
-    random.shuffle(arr) # dishuffle
-    return arr.pop()
+    if(arr == []):
+        return None
+    else:
+        random.shuffle(arr) # dishuffle
+        return arr.pop()
 
 def updateGeneration(offsprings, parents):
     fitOffsprings = fitnesspopulasi(offsprings, target) # fitness offspring
@@ -136,13 +154,19 @@ def updateGeneration(offsprings, parents):
     return offsprings
 
 population=populasi(jmlpopulasi, len(target),kuotaDosen)
-fitness=fitnesspopulasi(population, target)
-for i in range(len(population)):
-    print("Kromosom",[i+1],":",population[i],"Fitness:", fitness[i])
-parents=selectionparents(fitness,population,10)
-offsprings = mutation(crossover(parents, [3, 17]))
-parents = updateGeneration(offsprings, parents)
-
-for i in parents:
-    c = collections.Counter(i)
-    print(i,dict(c))
+generation = 0
+while(True):
+    fitness = fitnesspopulasi(population, target)
+    maxFitness = max(fitness)
+    print('generasi: {}\n{} -> Fitness: {}\n'.format(generation, population[fitness.index(maxFitness)], maxFitness))
+    generation += 1
+    # for i in range(len(population)):
+    #     print("Kromosom",[i+1],":",population[i],"Fitness:", fitness[i])
+    # print('')
+    parents = selectionparents(fitness, population, jmlpopulasi)
+    offsprings = mutation(crossover(parents, 2))
+    fitness = fitnesspopulasi(offsprings, target)
+    if(fitnessTarget in fitness):
+        print('target: {}, Fitness: {}'.format(offsprings[fitness.index(fitnessTarget)], fitnessTarget))
+        break
+    population = updateGeneration(offsprings, parents)
